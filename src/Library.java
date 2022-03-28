@@ -19,10 +19,12 @@ public class Library {
 
     public Library(String name) {
         this.name = name;
+        books = new HashMap<>();
+        shelves = new HashMap<>();
+        readers = new ArrayList<>();
     }
 
     public  Code init(String filename)  {
-        //TODO:
 
         // These two variables aid in parsing through the file
         String lineInFile = "";
@@ -30,7 +32,7 @@ public class Library {
 
         // Making the objects that open and read the file passed through
         File file = new File(filename);
-        Scanner scanner = null;
+        Scanner scanner;
 
         // if file is not found then it catches it
         try {
@@ -40,17 +42,41 @@ public class Library {
         }
 
         if(scanner.hasNextLine()){
+
+
             lineInFile = scanner.nextLine().trim();
             countOfRecords = convertInt(lineInFile, Code.BOOK_COUNT_ERROR);
+            if(countOfRecords < 0){
+                return Code.UNKNOWN_ERROR;
+            }
+
             initBooks(countOfRecords, scanner);
+            listBook();
+
+            lineInFile = scanner.nextLine().trim();
+            countOfRecords = convertInt(lineInFile, Code.BOOK_COUNT_ERROR);
+            if(countOfRecords < 0){
+                return Code.UNKNOWN_ERROR;
+            }
+            initShelves(countOfRecords, scanner);
+            listShelves(true);
+
+            lineInFile = scanner.nextLine().trim();
+            countOfRecords = convertInt(lineInFile, Code.BOOK_COUNT_ERROR);
+            if(countOfRecords < 0){
+                return Code.UNKNOWN_ERROR;
+            }
+            initReader(countOfRecords,scanner);
+            listReaders();
+
         }
 
-
+        return Code.SUCCESS;
 
     }
 
     private Code initBooks(int bookCount, Scanner scan){
-        //TODO:
+
         String[] bookData;
         Book book;
         LocalDate date;
@@ -60,12 +86,13 @@ public class Library {
             return Code.LIBRARY_ERROR;
         }
 
+        // takes the number of books to be parsed as the amount of times the loop will run
         for(int i = 0; i < bookCount; i++){
             bookData = scan.nextLine().split(",");
-            
+
             pageCount = convertInt(bookData[Book.PAGE_COUNT_], Code.PAGE_COUNT_ERROR);
             date = convertDate(bookData[Book.DUE_DATE_], Code.DATE_CONVERSION_ERROR);
-            
+
             if(pageCount <= 0){
                 return Code.PAGE_COUNT_ERROR;
             } else if(date == null){
@@ -81,11 +108,81 @@ public class Library {
 
 
     private Code initShelves(int shelfCount, Scanner scan){
-        //TODO:
+
+        Shelf shelf;
+        String[] shelfData;
+        int shelfNumber;
+
+
+        if(shelfCount < 1){
+            return Code.SHELF_COUNT_ERROR;
+        }
+
+        for(int i = 0; i < shelfCount; i++){
+            shelfData = scan.nextLine().split(",");
+            shelfNumber = convertInt(shelfData[Shelf.SHELF_NUMBER_], Code.SHELF_NUMBER_PARSE_ERROR);
+
+            if(shelfNumber <= 0){
+                return Code.SHELF_NUMBER_PARSE_ERROR;
+            } else {
+                shelf = new Shelf(shelfNumber, shelfData[Shelf.SUBJECT_]);
+                addShelf(shelf);
+            }
+        }
+
+        if(shelves.size() != shelfCount){
+            System.out.println("Number of shelves doesn't match expected");
+            return Code.SHELF_NUMBER_PARSE_ERROR;
+        } else{
+           return Code.SUCCESS;
+        }
+
     }
 
     private Code initReader(int ReaderCount, Scanner scan){
         //TODO:
+        Reader reader;
+        String[] readerData;
+        int cardNumberConverted = 0;
+        LocalDate date;
+        int bookCount;
+        Book book;
+
+        if(ReaderCount <= 0){
+            return Code.READER_COUNT_ERROR;
+        }
+
+        for(int i = 0; i < ReaderCount; i++){
+            readerData = scan.nextLine().split(",");
+            cardNumberConverted = convertInt(readerData[Reader.CARD_NUMBER_],
+                    Code.READER_PHONE_NUMBER_ERROR);
+
+            reader = new Reader(cardNumberConverted, readerData[Reader.NAME_],
+                    readerData[Reader.PHONE_]);
+
+            addReader(reader);
+
+            if(readerData.length > 3){
+
+                //bookCount = convertInt(readerData[Reader.BOOK_COUNT_], Code.BOOK_COUNT_ERROR );
+
+              for(int j = Reader.BOOK_START_; j < readerData.length - 1; j++){
+                  book = getBookByISBN(readerData[j]);
+                  date = convertDate(readerData[j + 1],Code.DATE_CONVERSION_ERROR);
+
+                  if(book == null){
+                      System.out.println("Error ");
+                  } else {
+                      book.setDueDate(date);
+                      checkOutBook(reader,book);
+                  }
+              }
+
+            }
+
+        }
+
+        return Code.SUCCESS;
     }
 
     public Code addBook(Book newBook){
@@ -186,9 +283,18 @@ public class Library {
     }
 
     public int listBook(){
-        //TODO:
+        int countOfABooks = 0;
 
+        for(Book book : books.keySet()){
 
+            for(int count : books.values()){
+                countOfABooks += count;
+                System.out.println(count + "copies of " + book.toString());
+            }
+
+        }
+
+        return countOfABooks;
     }
 
     public Code checkOutBook(Reader reader, Book book) {
@@ -318,19 +424,24 @@ public class Library {
 
     public int listReaders(){
 
-      Iterator<Reader> reader = readers.iterator();
-
-      while(reader.hasNext()){
-          System.out.println(reader.toString());
-      }
+        for (Reader value : readers) {
+            System.out.println(value.toString());
+        }
 
       return readers.size();
     }
 
     public int listReaders(boolean showBooks){
-        //TODO:
-
-
+        if(!showBooks){
+            for (Reader value : readers) {
+                System.out.println(value.toString());
+            }
+        } else {
+            for (Reader value : readers) {
+               value.toString();
+            }
+        }
+        return readers.size();
     }
 
     public Reader getReaderByCard(int cardNumber) {
@@ -438,7 +549,12 @@ public class Library {
 
     private Code errorCode(int codeNumber) {
 
-
+        for(Code code : Code.values()){
+            if(code.getCode() == codeNumber){
+                return code;
+            }
+        }
+        return Code.UNKNOWN_ERROR;
     }
 
 
